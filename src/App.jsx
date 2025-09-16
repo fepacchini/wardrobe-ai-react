@@ -15,7 +15,7 @@ import {
 } from "./lib/domain";
 import { extractDominantColors, nearestColorName } from "./lib/colors";
 import { computeSuggestions, computeSuggestionsForItem } from "./lib/ai";
-import { recommendOutfitsWithTies, adjustTemperature } from "./lib/recommendation";
+import { recommendOutfitsWithTies } from "./lib/recommendation";
 import { fileToDataURL, dataURLToImage } from "./lib/utils";
 
 // MobileNet (URLs corretas)
@@ -34,6 +34,14 @@ async function loadMobileNet() {
     }
   }
   return null;
+}
+
+function adjustTemperature(tempC, localType) {
+  if (localType === "indoor-ac") return Math.min(tempC, 24);
+  if (localType === "indoor") return tempC;
+  if (localType === "outdoor-sun") return tempC + 3;
+  if (localType === "outdoor-shade") return tempC;
+  return tempC;
 }
 
 function ImagePreview({ src, alt }) {
@@ -290,4 +298,3 @@ export default function App() {
     </div>
   );
 }
-
