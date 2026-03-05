@@ -130,10 +130,12 @@ export default function App() {
   const [form, setForm] = useState({ title: "", category: "top", style: "casual", fabric: "unknown", colors: [], tags: [], favorite: false });
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [busyMsg, setBusyMsg] = useState("Processando…");
   const [model, setModel] = useState(null);
   const [mlLabel, setMlLabel] = useState("");
   const [autoApply, setAutoApply] = useState(true);
   const [touched, setTouched] = useState({ category: false, style: false, fabric: false });
+  const [aiAnalyzed, setAiAnalyzed] = useState(false);
   const [occasion, setOccasion] = useState("casual");
   const [temperature, setTemperature] = useState(22);
   const [localType, setLocalType] = useState("indoor");
@@ -186,24 +188,62 @@ export default function App() {
     }
   }, [hints, autoApply, touched]);
 
+  // ── AI clothing analysis ──────────────────────────────────────────────────
+  async function analyzeWithAI(dataURL) {
+    const res = await fetch("/api/analyze-clothing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageDataURL: dataURL }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.error) return null;
+    return data;
+  }
+
   // ── File handling ─────────────────────────────────────────────────────────
   async function handleFile(file) {
     if (!file) return;
     setBusy(true);
+    setAiAnalyzed(false);
+    setBusyMsg("Analisando com IA…");
     try {
       const dataURL = await fileToDataURL(file);
       setPreview(dataURL);
       const img = await dataURLToImage(dataURL);
-      const [colors, predictions] = await Promise.all([
+
+      // Run color extraction and AI analysis in parallel
+      const [colors, aiResult] = await Promise.all([
         extractDominantColors(img, 2),
-        model ? model.classify(img) : Promise.resolve([]),
+        analyzeWithAI(dataURL).catch(() => null),
       ]);
-      setForm(f => ({ ...f, colors }));
-      setMlLabel(predictions[0]?.className || "");
+
+      if (aiResult) {
+        // AI succeeded — fill all fields at once
+        setForm(f => ({
+          ...f,
+          title: aiResult.title || f.title,
+          category: aiResult.category || f.category,
+          style: aiResult.style || f.style,
+          fabric: aiResult.fabric || f.fabric,
+          tags: aiResult.tags?.length ? aiResult.tags : f.tags,
+          colors,
+        }));
+        setTouched({ category: true, style: true, fabric: true });
+        setAiAnalyzed(true);
+        setMlLabel("");
+      } else {
+        // Fallback to MobileNet heuristics
+        setBusyMsg("Processando…");
+        const predictions = model ? await model.classify(img).catch(() => []) : [];
+        setForm(f => ({ ...f, colors }));
+        setMlLabel(predictions[0]?.className || "");
+      }
     } catch (e) {
       console.error("Error processing file:", e);
     } finally {
       setBusy(false);
+      setBusyMsg("Processando…");
     }
   }
 
@@ -245,6 +285,7 @@ export default function App() {
     setPreview(null);
     setMlLabel("");
     setTouched({ category: false, style: false, fabric: false });
+    setAiAnalyzed(false);
     setNewTag("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -379,13 +420,21 @@ export default function App() {
           <CardContent className="space-y-4">
             <ImagePreview src={preview} alt="pré-visualização" />
 
-            <Input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(e) => handleFile(e.target.files?.[0])}
-            />
+            <div className="space-y-1">
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
+              {aiAnalyzed && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5">
+                  <span className="font-medium">✦</span>
+                  <span>Categorizado pela IA — revise e salve</span>
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1">
@@ -611,7 +660,7 @@ export default function App() {
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white border rounded-2xl p-5 flex items-center gap-3 shadow-lg">
             <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full" />
-            <span className="text-sm font-medium">Processando…</span>
+            <span className="text-sm font-medium">{busyMsg}</span>
           </div>
         </div>
       )}

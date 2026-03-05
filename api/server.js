@@ -151,6 +151,96 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// ── POST /api/analyze-clothing ────────────────────────────────────────────
+
+app.post("/api/analyze-clothing", async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: "ANTHROPIC_API_KEY não configurada" });
+  }
+
+  const { imageDataURL } = req.body;
+  if (!imageDataURL || typeof imageDataURL !== "string") {
+    return res.status(400).json({ error: "imageDataURL é obrigatório" });
+  }
+
+  // Parse data URL: data:<mediaType>;base64,<data>
+  const match = imageDataURL.match(/^data:(image\/(?:jpeg|png|gif|webp));base64,(.+)$/);
+  if (!match) {
+    return res.status(400).json({ error: "Formato de imagem inválido. Use JPEG, PNG, GIF ou WebP." });
+  }
+  const [, mediaType, base64Data] = match;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-opus-4-6",
+      max_tokens: 512,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: mediaType, data: base64Data },
+            },
+            {
+              type: "text",
+              text: `Analise esta imagem de peça de roupa e retorne SOMENTE um objeto JSON válido, sem texto extra, markdown ou explicações.
+
+O JSON deve ter exatamente estas propriedades:
+{
+  "title": string — nome descritivo em português (ex: "Camisa xadrez manga longa azul"),
+  "category": um de ["top","bottom","skirt","dress","outerwear","shoes","accessory"],
+  "style": um de ["casual","smart","formal","sport","street","bohemian","minimalist"],
+  "fabric": um de ["cotton","linen","wool","silk","polyester","denim","leather","unknown"],
+  "tags": array de até 5 strings em português com características visíveis (ex: ["manga longa","listrado","botões"]),
+  "description": string — 1 frase descrevendo a peça
+}
+
+Referência de categorias:
+- top: camisetas, blusas, camisas, regatas, tops
+- bottom: calças, shorts, bermudas
+- skirt: saias
+- dress: vestidos, macacões
+- outerwear: casacos, jaquetas, blazers, cardigãs
+- shoes: sapatos, tênis, sandálias, botas
+- accessory: bolsas, cintos, cachecóis, chapéus, joias
+
+Retorne APENAS o JSON.`,
+            },
+          ],
+        },
+      ],
+    });
+
+    const raw = response.content[0]?.text?.trim() || "";
+    // Strip possible markdown fences
+    const jsonStr = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+    let data;
+    try {
+      data = JSON.parse(jsonStr);
+    } catch {
+      return res.status(500).json({ error: "A IA retornou resposta inválida. Tente novamente." });
+    }
+
+    const VALID_CATEGORIES = ["top","bottom","skirt","dress","outerwear","shoes","accessory"];
+    const VALID_STYLES = ["casual","smart","formal","sport","street","bohemian","minimalist"];
+    const VALID_FABRICS = ["cotton","linen","wool","silk","polyester","denim","leather","unknown"];
+
+    res.json({
+      title: String(data.title || "").slice(0, 80),
+      category: VALID_CATEGORIES.includes(data.category) ? data.category : "top",
+      style: VALID_STYLES.includes(data.style) ? data.style : "casual",
+      fabric: VALID_FABRICS.includes(data.fabric) ? data.fabric : "unknown",
+      tags: Array.isArray(data.tags)
+        ? data.tags.slice(0, 5).map((t) => String(t).slice(0, 25))
+        : [],
+      description: String(data.description || "").slice(0, 200),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Health check ──────────────────────────────────────────────────────────
 
 app.get("/api/health", (_req, res) => {
