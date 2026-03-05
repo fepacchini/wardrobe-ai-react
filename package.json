@@ -25,12 +25,18 @@
   "homepage": "https://github.com/fepacchini/wardrobe-ai-react#readme",
   "scripts": {
     "dev": "vite",
+    "api": "node api/server.js",
+    "dev:full": "concurrently -n \"app,api\" -c \"blue,green\" \"npm run dev\" \"npm run api\"",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@supabase/supabase-js": "^2.98.0",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

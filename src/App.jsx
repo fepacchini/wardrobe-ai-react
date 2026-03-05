@@ -7,6 +7,7 @@ import { Label } from "./components/ui/Label";
 import { Badge } from "./components/ui/Badge";
 import { Range } from "./components/ui/Range";
 import { Modal } from "./components/ui/Modal";
+import { AIChat } from "./components/AIChat";
 
 import {
   CATEGORIES, STYLES, FABRICS, OCCASIONS, LOCAL_TYPES,
@@ -614,6 +615,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Floating AI Stylist Chat */}
+      <AIChat items={items} occasion={occasion} temperature={temperature} />
 
       {/* Delete confirmation modal */}
       <Modal
