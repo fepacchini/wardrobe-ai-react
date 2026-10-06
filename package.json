@@ -4,7 +4,15 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Aplicativo React para gerenciamento de guarda-roupa virtual com IA - Sugestões de categoria, estilo, tecido e recomendações de looks",
-  "keywords": ["react", "ai", "wardrobe", "fashion", "tensorflow", "vite", "tailwind"],
+  "keywords": [
+    "react",
+    "ai",
+    "wardrobe",
+    "fashion",
+    "tensorflow",
+    "vite",
+    "tailwind"
+  ],
   "author": "Wardrobe AI React",
   "license": "MIT",
   "repository": {
@@ -17,20 +25,27 @@
   "homepage": "https://github.com/fepacchini/wardrobe-ai-react#readme",
   "scripts": {
     "dev": "vite",
+    "api": "node api/server.js",
+    "dev:full": "concurrently -n \"app,api\" -c \"blue,green\" \"npm run dev\" \"npm run api\"",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@supabase/supabase-js": "^2.98.0",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "vite": "^5.4.0",
-    "tailwindcss": "^3.4.9",
-    "postcss": "^8.4.47",
+    "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
-    "@vitejs/plugin-react": "^4.3.1"
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.9",
+    "vite": "^5.4.0"
   },
   "engines": {
     "node": ">=16.0.0",

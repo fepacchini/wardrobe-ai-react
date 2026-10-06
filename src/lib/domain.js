@@ -69,7 +69,16 @@ export function sanitizeItem(it) {
   const style = safeStyle(it.style);
   const fabric = safeFabric(inferFabric(it) || it.fabric);
   const colors = Array.isArray(it.colors) ? it.colors.filter(Boolean).slice(0, 2) : [];
-  return { id: it.id || randomId(), image: it.image || "", title: it.title || "", category, style, fabric, colors };
+  const tags = Array.isArray(it.tags) ? it.tags.filter(t => typeof t === "string" && t.trim()) : [];
+  return {
+    id: it.id || randomId(),
+    image: it.image || "",
+    title: it.title || "",
+    category, style, fabric, colors,
+    tags,
+    favorite: Boolean(it.favorite),
+    createdAt: it.createdAt || new Date().toISOString(),
+  };
 }
 export function saveToStorage(items) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {} }
 export function loadFromStorage() {
